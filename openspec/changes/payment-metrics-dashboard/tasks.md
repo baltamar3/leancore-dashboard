@@ -33,10 +33,10 @@
 
 ## 5. API y tablero
 
-- [ ] 5.1 Implementar `GET /metrics/payments?minutes=N` sobre `get_metrics`; test con `TestClient` para una ventana válida.
-- [ ] 5.2 Validar el parámetro `minutes` (rango permitido, valor por defecto si se omite, error 422 si es inválido o está fuera de rango); tests para ambos casos.
-- [ ] 5.3 Manejar indisponibilidad de Redis en el endpoint devolviendo 503 controlado; test que simula un fallo de conexión.
-- [ ] 5.4 Página HTML mínima que hace polling cada 2s al endpoint de métricas; verificación manual (navegador o `curl`) de que la página carga y los valores se actualizan.
+- [x] 5.1 Implementar `GET /metrics/payments?minutes=N` sobre `get_metrics`; test con `TestClient` para una ventana válida.
+- [x] 5.2 Validar el parámetro `minutes` (rango permitido, valor por defecto si se omite, error 422 si es inválido o está fuera de rango); tests para ambos casos.
+- [x] 5.3 Manejar indisponibilidad de Redis en el endpoint devolviendo 503 controlado; test que simula un fallo de conexión.
+- [x] 5.4 Página HTML mínima que hace polling cada 2s al endpoint de métricas; verificación manual (navegador o `curl`) de que la página carga y los valores se actualizan.
 
 ## 6. Generador de eventos de prueba
 
