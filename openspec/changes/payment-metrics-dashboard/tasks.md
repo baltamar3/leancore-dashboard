@@ -51,4 +51,4 @@
 
 ## 8. Documentación mínima para ejecutar
 
-- [ ] 8.1 Escribir un README funcional (qué es, diagrama de arquitectura en mermaid, pasos para correr localmente, cómo correr tests y el demo de duplicados/concurrencia); verificar siguiendo los pasos documentados desde un checkout limpio.
+- [x] 8.1 Escribir un README funcional (qué es, diagrama de arquitectura en mermaid, pasos para correr localmente, cómo correr tests y el demo de duplicados/concurrencia); verificar siguiendo los pasos documentados desde un checkout limpio.
