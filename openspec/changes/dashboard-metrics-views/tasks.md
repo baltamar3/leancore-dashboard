@@ -21,9 +21,9 @@
 
 - [x] 4.1 Extender `tests/unit/test_api.py::test_dashboard_page_loads` para verificar que la página contiene el selector de ventana y los controles de ambas vistas (por id/atributo esperado); verificar que `make test-unit` sigue en verde.
 - [x] 4.2 Verificar que toda la suite existente (unit + integration) sigue pasando sin modificaciones: `make test`.
-- [ ] 4.3 Documentar en el README un test manual paso a paso: publicar un lote con `scripts/producer.py`, comparar el total mostrado en la vista agregada contra la suma de los buckets de la vista de serie para la misma ventana, y confirmar que cambiar el selector refresca ambas vistas correctamente.
+- [x] 4.3 Documentar en el README un test manual paso a paso: publicar un lote con `scripts/producer.py`, comparar el total mostrado en la vista agregada contra la suma de los buckets de la vista de serie para la misma ventana, y confirmar que cambiar el selector refresca ambas vistas correctamente.
 
 ## 5. Documentación y cierre
 
-- [ ] 5.1 Actualizar la sección de uso del README (cómo usar el selector y las dos vistas) y ampliar "Decisiones y trade-offs" con la tabla de los ADRs 006-008; verificar siguiendo los pasos documentados desde `docker compose up`.
-- [ ] 5.2 Verificar que todo corre con el mismo comando de siempre (`docker compose up --build --scale consumer=3`) sin cambios adicionales de infraestructura.
+- [x] 5.1 Actualizar la sección de uso del README (cómo usar el selector y las dos vistas) y ampliar "Decisiones y trade-offs" con la tabla de los ADRs 006-008; verificar siguiendo los pasos documentados desde `docker compose up`.
+- [x] 5.2 Verificar que todo corre con el mismo comando de siempre (`docker compose up --build --scale consumer=3`) sin cambios adicionales de infraestructura.

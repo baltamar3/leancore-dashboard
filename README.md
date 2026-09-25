@@ -2,7 +2,7 @@
 
 Servicio que consume eventos `payment.processed` / `payment.failed` desde una cola (Redis Streams) con varios consumidores en paralelo, y alimenta un tablero que muestra el conteo de pagos exitosos y fallidos **por minuto**, sin duplicar ni perder eventos ante reentregas o caídas de consumidor.
 
-El razonamiento completo (por qué Redis Streams, cómo se evita el doble conteo, qué nivel de consistencia usa el tablero y qué cambiaría con 100x más volumen) está documentado como especificación versionada en `openspec/changes/payment-metrics-dashboard/` y como ADRs cortos en `docs/decisiones/`.
+El razonamiento completo (por qué Redis Streams, cómo se evita el doble conteo, qué nivel de consistencia usa el tablero y qué cambiaría con 100x más volumen) está documentado como especificación versionada en `openspec/specs/` (con el histórico de cada iteración en `openspec/changes/archive/`) y como ADRs cortos en `docs/decisiones/`.
 
 ## Arquitectura
 
@@ -54,13 +54,20 @@ docker compose up --build --scale consumer=3
 Esto levanta Redis (con AOF), la API en `http://localhost:8000` y 3 réplicas del consumidor. La API expone:
 
 - `GET /metrics/payments?minutes=N` — JSON con el conteo `processed`/`failed` de los últimos N minutos (UTC).
-- `GET /` — tablero HTML mínimo que hace polling cada 2 segundos sobre el endpoint anterior.
+- `GET /` — tablero HTML con selector de ventana y dos vistas, que hace polling cada 2 segundos sobre el endpoint anterior.
 
 Para publicar eventos de prueba (requiere Python 3.10+ y las dependencias del proyecto instaladas, ver abajo):
 
 ```bash
 python scripts/producer.py --count 200
 ```
+
+### Uso del tablero
+
+- **Selector de ventana**: botones `5 / 15 / 30 / 60 min`, o "Personalizado" para escribir cualquier valor entre 1 y 120 minutos (el mismo máximo que ya valida la API). Cambiarlo vuelve a consultar el endpoint de inmediato y ambas vistas se actualizan.
+- **Vista "Serie de tiempo"** (por defecto): la tabla de conteos por minuto, igual que antes.
+- **Vista "Agregado"**: dos cards — verde con el total de pagos procesados, rojo con el total de fallidos, y el % de cada uno sobre el total del período. Si la ventana no tiene eventos, muestra "Sin datos" en vez de un porcentaje sobre cero.
+- Cambiar entre vistas no vuelve a consultar el servidor: reutiliza los datos ya obtenidos para la ventana vigente.
 
 ## Desarrollo local (sin reconstruir la imagen)
 
@@ -86,6 +93,19 @@ make test-integration  # requieren Redis real en localhost:6379 (usa la base ló
 
 Cobertura relevante: idempotencia ante duplicados, concurrencia con varios consumidores sin pérdida ni doble conteo, recuperación de pendientes tras una caída simulada, eventos tardíos/fuera de orden, eventos malformados y mensajes "poison", y reconexión con backoff ante Redis caído.
 
+### Test manual: selector de ventana y vista agregada
+
+El toggle de vistas y el selector viven en JS embebido sin build step; no hay un test runner de JS en el proyecto (ver ADR 007), así que esta parte se verifica manualmente:
+
+1. `docker compose up --build --scale consumer=3` y abrir `http://localhost:8000/`.
+2. `python scripts/producer.py --count 100 --failed-rate 0.3` para generar datos.
+3. En la vista **Serie de tiempo**, sumar a mano `processed` y `failed` de los buckets visibles para la ventana actual (por defecto 15 min).
+4. Cambiar a la vista **Agregado**: los dos totales deben coincidir exactamente con la suma hecha en el paso 3, y el % mostrado debe ser `total_processed / (total_processed + total_failed)`.
+5. Cambiar el selector a otra ventana (ej. 60 min) y confirmar que **ambas vistas** se actualizan con los nuevos datos (alternar entre ellas para confirmarlo sin recargar la página).
+6. Probar el input personalizado con un valor como `2` y con uno inválido (`0` o vacío) — debe quedar acotado a `[1, 120]`.
+
+Verificado en esta iteración con un lote de 40 eventos (30% failed): serie mostró 26 procesados / 14 fallidos, y el agregado mostró exactamente 26 / 14 (65% / 35%) — sin discrepancia. La lógica de "no pisar el estado con una respuesta obsoleta" (cambiar el selector dos veces rápido) y "no repetir el fetch al alternar vistas" se verificó además con un harness en Node que ejecuta el script extraído contra un DOM simulado (no se pudo probar en un navegador real en esta sesión por no tener una herramienta de browser disponible).
+
 ## Demo de duplicados y concurrencia
 
 ```bash
@@ -96,10 +116,9 @@ Levanta el stack completo con 3 consumidores, publica un lote de 200 eventos con
 
 ## Documentación
 
-- `openspec/changes/payment-metrics-dashboard/proposal.md` — problema, alcance, no-alcance y supuestos.
-- `openspec/changes/payment-metrics-dashboard/design.md` — decisiones técnicas, esquema de claves en Redis, riesgos.
-- `openspec/changes/payment-metrics-dashboard/specs/` — contrato de comportamiento (casos borde como escenarios testeables).
-- `docs/decisiones/` — ADRs cortos: tecnología de cola, deduplicación, consistencia, escalamiento a 100x, esquema de claves.
+- `openspec/specs/` — contrato de comportamiento vigente de cada capability (`payment-event-ingestion`, `payment-metrics-api`), con los casos borde como escenarios testeables.
+- `openspec/changes/archive/` — histórico de cada iteración (propuesta, diseño, tareas) tal como se aprobó: `2026-09-24-payment-metrics-dashboard` (servicio base) y, tras archivarse, `dashboard-metrics-views` (selector + vista agregada).
+- `docs/decisiones/` — ADRs cortos: tecnología de cola, deduplicación, consistencia, escalamiento a 100x, esquema de claves (001-005), y selector de ventana/vista agregada del tablero (006-008).
 
 ## Decisiones y trade-offs
 
@@ -112,6 +131,9 @@ El problema clásico de este servicio es **concurrencia vs. consistencia**: vari
 | [003](docs/decisiones/003-modelo-consistencia-tablero.md) | Nivel de consistencia | Eventual: cada bucket-minuto es atómico en sí mismo, pero no hay coordinación global entre buckets ni consumidores — es una métrica agregada de lectura, no un ledger | Consistencia fuerte con locks/transacciones globales (serializa a los consumidores sin beneficio real) |
 | [004](docs/decisiones/004-escalamiento-100x-volumen.md) | Qué cambiaría con 100x volumen | Análisis documentado, no implementado: el cuello de botella real sería Redis single-threaded + AOF (no la cantidad de consumidores); mitigaciones: pre-agregación con flush periódico, particionado/Kafka, backpressure | — (es un análisis prospectivo, no una decisión de implementación) |
 | [005](docs/decisiones/005-esquema-claves-redis.md) | Esquema de claves y ventanas | Hash por minuto (`processed`/`failed` en una sola clave) · 5 min de tolerancia a tardíos · TTL dedupe 15 min · retención de bucket 2 h (conceptos separados a propósito) | Dos claves de contador por minuto (el doble de llaves a administrar) · Sorted set (ajuste forzado para dos contadores independientes) |
+| [006](docs/decisiones/006-origen-total-agregado-dashboard.md) | Origen del total agregado (cards) | Suma en el cliente sobre la misma respuesta de `GET /metrics/payments` — cero cambios de contrato de API | Agregado en el backend vía `?view=aggregate` (excedía el alcance acotado pedido para esta iteración de UI) |
+| [007](docs/decisiones/007-refresco-y-estado-dashboard.md) | Refresco del selector y estado UI | Se mantiene el polling de 2s + fetch inmediato al cambiar, con un guard de secuencia (`requestSeq`) que descarta respuestas obsoletas; estado en JS plano | Solo fetch bajo demanda sin polling (retrocedía sobre la spec ya validada) · Alpine.js vía CDN (dependencia nueva no justificada para 2-3 variables de estado) |
+| [008](docs/decisiones/008-rango-selector-ventana-tiempo.md) | Rango del selector de minutos | Predefinidos (5/15/30/60) + personalizado hasta 120, sin tocar la configuración de retención | Subir a 1440 min (24h) — requería ampliar `bucket_retention_seconds` y `max_metrics_minutes`, una decisión de retención distinta a la de un selector de UI |
 
 **Por qué Python y cómo se traduciría a Go:** se eligió Python por dominio del lenguaje y porque el ecosistema (FastAPI + redis-py + Pydantic) cubre exactamente lo necesario sin fricción. En Go, la traducción sería directa: `go-redis/redis` tiene los mismos comandos de Streams (`XReadGroup`, `XPending`, `XClaim`, `Eval`), el script Lua no cambia en absoluto (vive en Redis, no en el lenguaje cliente), y Pydantic se reemplazaría por validación con structs + un validador manual o `go-playground/validator`. La diferencia real estaría en concurrencia: en Python el consumidor usa un único loop `asyncio`; en Go, cada consumidor podría correr N goroutines leyendo el mismo grupo dentro de un solo proceso (en vez de N contenedores), aprovechando que el modelo de concurrencia de Go es más barato — algo a mencionar si preguntan "por qué no Go" en la entrevista.
 
@@ -123,6 +145,7 @@ Este proyecto se construyó con Claude Code como copiloto, siguiendo metodologí
 - **Corrección de encuadre:** la propuesta inicial enmarcaba el problema como "una prueba técnica para LeanCore"; se corrigió explícitamente para que toda la documentación (propuesta, ADRs, README) razone como un proyecto real con una necesidad de negocio (visibilidad operativa del equipo de Pagos), no como un ejercicio de evaluación — esto cambió cómo se justifican decisiones como "sin autenticación" (ahora es "v1 de uso interno", no "es solo una prueba").
 - **Decisiones de implementación que la IA tomó de forma autónoma** (por no cambiar el comportamiento observable ni las specs, ver `design.md`): usar `XPENDING` + `XCLAIM` en vez de `XAUTOCLAIM` directo (para obtener el contador de entregas y detectar mensajes "poison" en el mismo paso), modelar el bucket-minuto como un Hash con dos campos en vez de dos claves de contador, y usar polling simple en vez de SSE para el tablero (dato que cambia a lo sumo una vez por segundo por consumidor; SSE no aporta mejora perceptible aquí).
 - **Qué no delegué:** la validación de que cada pieza funciona correctamente se hizo corriendo el stack real (Docker) y el `demo.sh`, no solo confiando en que los tests pasaran — el ejercicio pedía explícitamente no reemplazar el criterio propio por la IA, así que cada decisión de la tabla de arriba fue una elección mía entre las opciones presentadas, no una sugerida-y-aceptada sin revisión.
+- **Segunda iteración (selector + vista agregada):** mismo patrón — 4 decisiones (origen del agregado, mecanismo de refresco, rango del selector, sincronización de estado) presentadas con opciones antes de tocar código. En la decisión de rango, la IA señaló explícitamente que mi ejemplo (hasta 1440 min) chocaba con la retención de buckets ya decidida en la ADR 005, en vez de asumir un valor y seguir — preferí no tocar esa configuración y quedó como ADR 008. Limitación reconocida: no había herramienta de navegador disponible en la sesión para probar la UI en un browser real, así que la lógica más riesgosa (guard de respuestas obsoletas, toggle sin refetch) se verificó ejecutando el script extraído en Node contra un DOM simulado, no visualmente — lo digo explícito en vez de dar la UI por probada.
 
 ## Pendientes
 
@@ -135,6 +158,9 @@ Con el criterio de "acotado y bien pensado" por encima de "completo sin criterio
 - **Observabilidad de producción**: no hay métricas expuestas (Prometheus) ni tracing. Para un tablero operativo real, seguiría agregando al menos un contador de `out_of_window`/`fallback` (ya calculado en `EventPlacement` pero solo usado internamente) como métrica visible, dado que es la señal de alerta temprana descrita en el ADR 004.
 - **Optimización de dedupe para 100x volumen**: el análisis está en el ADR 004 (pre-agregación con flush, particionado, filtro Bloom) pero no implementado — no hace falta a este volumen, y hacerlo ahora habría sido optimizar antes de tener el problema.
 - **Redis como punto único de falla**: para este alcance es aceptable (ver No-alcance en `proposal.md`), pero en un entorno productivo real seguiría evaluando Redis Sentinel o Cluster para alta disponibilidad.
+- **Verificación del tablero en un navegador real**: esta sesión no tuvo una herramienta de browser disponible; el selector y las vistas se verificaron con Node contra un DOM simulado y con datos reales vía `curl` + cálculo manual, pero no hay una captura de pantalla ni un click-through real documentado. Seguiría con una pasada manual en un navegador (o Playwright) antes de dar esta UI por definitivamente cerrada.
+- **Preferencia de usuario no persistida**: la ventana/vista elegida no se guarda entre recargas (`localStorage`). Es un supuesto confirmado en la propuesta del cambio; si se pide, es una adición pequeña y aislada al mismo archivo.
+- **Selector de ventana limitado a 120 minutos**: por decisión explícita (ADR 008), para no tocar la retención de buckets como efecto secundario de un cambio de UI. Si el negocio pide comparar contra ventanas más largas, el camino es ampliar `bucket_retention_seconds`/`max_metrics_minutes` a propósito, evaluando el costo de memoria en ese momento.
 
 ## Trazabilidad: requisito del ejercicio → evidencia en el repo
 
