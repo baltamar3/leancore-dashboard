@@ -65,3 +65,20 @@ def test_dashboard_page_loads(client):
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "/metrics/payments" in response.text
+
+
+def test_dashboard_page_has_time_window_selector_and_both_views(client):
+    response = client.get("/")
+
+    body = response.text
+    assert 'data-minutes="5"' in body
+    assert 'data-minutes="15"' in body
+    assert 'data-minutes="30"' in body
+    assert 'data-minutes="60"' in body
+    assert 'id="custom-minutes"' in body
+    assert f'max="{settings.max_metrics_minutes}"' in body
+
+    assert 'id="view-timeseries"' in body
+    assert 'id="view-aggregate"' in body
+    assert 'data-view="timeseries"' in body
+    assert 'data-view="aggregate"' in body
