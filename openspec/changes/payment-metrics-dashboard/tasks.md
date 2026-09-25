@@ -40,8 +40,8 @@
 
 ## 6. Generador de eventos de prueba
 
-- [ ] 6.1 Implementar `scripts/producer.py` con publicación normal de eventos `payment.processed`/`payment.failed` con `occurred_at` actual; verificar que `XLEN` del stream aumenta según lo publicado.
-- [ ] 6.2 Agregar flags `--duplicate-rate`, `--out-of-order` y `--malformed-rate` que reproduzcan esos tres casos borde; verificación manual de que el consumidor reacciona como describen las specs (dedupe, bucket correcto, envío a `dlq`).
+- [x] 6.1 Implementar `scripts/producer.py` con publicación normal de eventos `payment.processed`/`payment.failed` con `occurred_at` actual; verificar que `XLEN` del stream aumenta según lo publicado.
+- [x] 6.2 Agregar flags `--duplicate-rate`, `--out-of-order` y `--malformed-rate` que reproduzcan esos tres casos borde; verificación manual de que el consumidor reacciona como describen las specs (dedupe, bucket correcto, envío a `dlq`).
 
 ## 7. Orquestación completa y demo end-to-end
 
