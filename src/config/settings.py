@@ -1,10 +1,10 @@
-"""Configuración de la aplicación (Redis, nombres de stream/grupo, TTLs)."""
+"""Application configuration (Redis, stream/group names, TTLs)."""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Valores de configuración leídos de variables de entorno o `.env`."""
+    """Configuration values read from environment variables or `.env`."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -34,5 +34,5 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    """Construye una nueva instancia de `Settings` a partir del entorno actual."""
+    """Build a new `Settings` instance from the current environment."""
     return Settings()

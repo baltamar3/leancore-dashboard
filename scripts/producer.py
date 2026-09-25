@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""Generador de eventos de pago para demostrar dedupe, desorden y DLQ.
+"""Payment event generator to demonstrate dedupe, out-of-order events, and DLQ.
 
-Ejemplos:
+Examples:
   python scripts/producer.py --count 200
   python scripts/producer.py --count 200 --duplicate-rate 0.2 --out-of-order --spread-seconds 120
   python scripts/producer.py --count 50 --malformed-rate 0.1
@@ -19,7 +19,7 @@ from src.config.settings import Settings, get_settings
 
 
 def build_valid_fields(event_type: str, occurred_at: datetime) -> dict[str, str]:
-    """Construye los campos de un evento de pago válido para publicar en el stream."""
+    """Build the fields of a valid payment event to publish on the stream."""
     return {
         "event_id": str(uuid.uuid4()),
         "type": event_type,
@@ -29,8 +29,8 @@ def build_valid_fields(event_type: str, occurred_at: datetime) -> dict[str, str]
 
 
 def build_malformed_fields() -> dict[str, str]:
-    """Elige al azar una de las variantes de evento inválido (falta campo,
-    tipo desconocido, fecha con formato inválido)."""
+    """Pick at random one of the invalid-event variants (missing field,
+    unknown type, badly-formatted date)."""
     variants: list[dict[str, str]] = [
         {"event_id": str(uuid.uuid4()), "type": "payment.processed"},
         {
@@ -50,7 +50,7 @@ def build_malformed_fields() -> dict[str, str]:
 
 
 def build_batch(args: argparse.Namespace, now: datetime) -> list[tuple[dict[str, str], bool]]:
-    """Devuelve pares (fields, is_malformed)."""
+    """Return (fields, is_malformed) pairs."""
     batch: list[tuple[dict[str, str], bool]] = []
     for _ in range(args.count):
         occurred_at: datetime = now
@@ -71,7 +71,7 @@ def build_batch(args: argparse.Namespace, now: datetime) -> list[tuple[dict[str,
 
 
 def main() -> None:
-    """CLI: publica un lote de eventos de pago según los flags recibidos."""
+    """CLI: publish a batch of payment events according to the given flags."""
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Generador de eventos de pago para pruebas"
     )

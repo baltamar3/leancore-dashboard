@@ -1,4 +1,4 @@
-"""Página HTML del tablero: selector de ventana y vistas serie/agregado."""
+"""Dashboard HTML page: time-window selector and time-series/aggregate views."""
 
 from src.config.settings import Settings, get_settings
 
@@ -235,7 +235,7 @@ _TEMPLATE: str = """<!DOCTYPE html>
 
 
 def _build_dashboard_html(default_minutes: int, max_minutes: int) -> str:
-    """Rellena los placeholders de ventana por defecto/máxima en la plantilla."""
+    """Fill in the default/max window placeholders in the template."""
     return _TEMPLATE.replace("__DEFAULT_MINUTES__", str(default_minutes)).replace(
         "__MAX_MINUTES__", str(max_minutes)
     )

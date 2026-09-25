@@ -1,9 +1,9 @@
-"""Dependencias de FastAPI inyectables en los endpoints."""
+"""FastAPI dependencies injectable into the endpoints."""
 
 from fastapi import Request
 from redis.asyncio import Redis
 
 
 def get_redis(request: Request) -> Redis:
-    """Devuelve el cliente Redis compartido, creado en el `lifespan` de la app."""
+    """Return the shared Redis client created in the app's `lifespan`."""
     return request.app.state.redis

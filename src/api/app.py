@@ -1,4 +1,4 @@
-"""API FastAPI: endpoint de métricas y tablero HTML."""
+"""FastAPI app: metrics endpoint and HTML dashboard."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -19,7 +19,7 @@ settings: Settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Abre el cliente Redis compartido al arrancar y lo cierra al apagar."""
+    """Open the shared Redis client on startup and close it on shutdown."""
     app.state.redis = create_redis(settings)
     yield
     await app.state.redis.aclose()
@@ -35,7 +35,7 @@ async def payments_metrics(
     ),
     redis: Redis = Depends(get_redis),
 ) -> dict:
-    """Devuelve el conteo `processed`/`failed` de los últimos `minutes` minutos."""
+    """Return the `processed`/`failed` count for the last `minutes` minutes."""
     try:
         metrics: list[MinuteMetrics] = await get_metrics(redis, minutes=minutes)
     except RedisError as exc:
@@ -56,5 +56,5 @@ async def payments_metrics(
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard() -> str:
-    """Sirve el tablero HTML (selector de ventana + serie de tiempo/agregado)."""
+    """Serve the HTML dashboard (window selector + time-series/aggregate views)."""
     return DASHBOARD_HTML

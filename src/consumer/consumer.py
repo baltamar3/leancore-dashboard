@@ -1,4 +1,4 @@
-"""Consumidor de `settings.stream_name`: dedupe, agregación, DLQ y recuperación."""
+"""Consumer for `settings.stream_name`: dedupe, aggregation, DLQ, recovery."""
 
 import asyncio
 import logging
@@ -15,14 +15,14 @@ from src.consumer.schemas import PaymentEvent
 
 logger = logging.getLogger(__name__)
 
-# Una entrada de Redis Stream es (id, fields); ambos llegan como bytes por defecto.
+# A Redis Stream entry is (id, fields); both arrive as bytes by default.
 StreamEntryId = bytes
 StreamFields = dict[bytes, bytes]
 StreamEntry = tuple[StreamEntryId, StreamFields]
 
 
 def _decode_fields(fields: StreamFields) -> dict[str, str]:
-    """Decodifica claves y valores de una entrada de stream a `str`."""
+    """Decode a stream entry's keys and values to `str`."""
     return {
         (k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
         for k, v in fields.items()
@@ -30,18 +30,18 @@ def _decode_fields(fields: StreamFields) -> dict[str, str]:
 
 
 class PaymentEventConsumer:
-    """Consume `settings.stream_name` con recuperación de pendientes, dead-letter
-    y reconexión con backoff (ver specs `payment-event-ingestion` y ADR 002/003)."""
+    """Consumes `settings.stream_name` with pending recovery, dead-lettering,
+    and backoff reconnection (see specs `payment-event-ingestion` and ADR 002/003)."""
 
     def __init__(self, redis: Redis, settings: Settings, consumer_name: str) -> None:
-        """Guarda las dependencias; no toca Redis hasta `run()`/`ensure_group()`."""
+        """Store the dependencies; does not touch Redis until `run()`/`ensure_group()`."""
         self._redis: Redis = redis
         self._settings: Settings = settings
         self._consumer_name: str = consumer_name
         self._aggregator: DedupeAggregator = DedupeAggregator(redis, settings)
 
     async def ensure_group(self) -> None:
-        """Crea el stream y el consumer group si no existen (idempotente)."""
+        """Create the stream and consumer group if they don't exist (idempotent)."""
         try:
             await self._redis.xgroup_create(
                 self._settings.stream_name,
@@ -54,8 +54,8 @@ class PaymentEventConsumer:
                 raise
 
     async def run(self, stop_event: asyncio.Event) -> None:
-        """Loop principal: recupera pendientes, consume nuevas entradas, reintenta
-        con backoff si Redis no responde, y se detiene al ponerse `stop_event`."""
+        """Main loop: recovers pending entries, consumes new ones, retries with
+        backoff if Redis is unreachable, and stops once `stop_event` is set."""
         backoff: float = self._settings.reconnect_backoff_initial_seconds
         while not stop_event.is_set():
             try:
@@ -71,7 +71,7 @@ class PaymentEventConsumer:
                 backoff = min(backoff * 2, self._settings.reconnect_backoff_max_seconds)
 
     async def _recover_pending(self) -> None:
-        """Reclama entradas pendientes ociosas; envía las "poison" a la DLQ."""
+        """Claim idle pending entries; send "poison" ones to the DLQ."""
         pending: list[dict] = await self._redis.xpending_range(
             self._settings.stream_name,
             self._settings.consumer_group,
@@ -108,7 +108,7 @@ class PaymentEventConsumer:
             await self._process_entries(claimed)
 
     async def _consume_new(self) -> None:
-        """Lee nuevas entradas del stream (bloqueando hasta `consumer_block_ms`)."""
+        """Read new entries from the stream (blocking up to `consumer_block_ms`)."""
         response = await self._redis.xreadgroup(
             groupname=self._settings.consumer_group,
             consumername=self._consumer_name,
@@ -122,13 +122,13 @@ class PaymentEventConsumer:
         await self._process_entries(entries)
 
     async def _process_entries(self, entries: list[StreamEntry]) -> None:
-        """Procesa cada entrada de la lista, una por una, en orden."""
+        """Process each entry in the list, one at a time, in order."""
         for entry_id, fields in entries:
             await self._process_one(entry_id, fields)
 
     async def _process_one(self, entry_id: StreamEntryId, fields: StreamFields) -> None:
-        """Valida, aplica (dedupe+agregación) y confirma una entrada, o la
-        envía a la DLQ si no valida. El ack siempre ocurre después de aplicar."""
+        """Validate, apply (dedupe+aggregation) and ack an entry, or send it
+        to the DLQ if it fails validation. Ack always happens after apply."""
         try:
             event: PaymentEvent = PaymentEvent.model_validate(_decode_fields(fields))
         except ValidationError as exc:
@@ -146,7 +146,7 @@ class PaymentEventConsumer:
         await self._ack(entry_id)
 
     async def _quarantine_by_id(self, entry_id: StreamEntryId, reason: str) -> None:
-        """Copia la entrada `entry_id` a la DLQ (por id, sin sus fields en mano) y confirma."""
+        """Copy the `entry_id` entry to the DLQ (by id, its fields not in hand) and ack it."""
         raw: list[StreamEntry] = await self._redis.xrange(
             self._settings.stream_name, min=entry_id, max=entry_id
         )
@@ -157,5 +157,5 @@ class PaymentEventConsumer:
         await self._ack(entry_id)
 
     async def _ack(self, entry_id: StreamEntryId) -> None:
-        """Confirma (`XACK`) una entrada ya aplicada."""
+        """Acknowledge (`XACK`) an entry that was already applied."""
         await self._redis.xack(self._settings.stream_name, self._settings.consumer_group, entry_id)

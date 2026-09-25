@@ -1,4 +1,4 @@
-"""Cálculo de buckets por minuto y clasificación de eventos tardíos (ADR 003, 005)."""
+"""Minute-bucket computation and late-event classification (ADR 003, 005)."""
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -8,19 +8,19 @@ BUCKET_KEY_FORMAT = "%Y%m%d%H%M"
 
 
 def truncate_to_minute(moment: datetime) -> datetime:
-    """Trunca `moment` a UTC con segundos y microsegundos en cero."""
+    """Truncate `moment` to UTC with seconds and microseconds zeroed out."""
     moment_utc: datetime = moment.astimezone(timezone.utc)
     return moment_utc.replace(second=0, microsecond=0)
 
 
 def bucket_key(minute_start: datetime) -> str:
-    """Clave de Redis del bucket-minuto correspondiente a `minute_start`."""
+    """Redis key of the minute-bucket corresponding to `minute_start`."""
     return f"{BUCKET_KEY_PREFIX}{minute_start.strftime(BUCKET_KEY_FORMAT)}"
 
 
 @dataclass(frozen=True)
 class EventPlacement:
-    """Resultado de `classify_event`: a qué bucket va un evento y con qué marcas."""
+    """Result of `classify_event`: which bucket an event lands in and its flags."""
 
     bucket_start: datetime
     out_of_window: bool
@@ -33,14 +33,15 @@ def classify_event(
     allowed_lateness_seconds: int,
     bucket_retention_seconds: int,
 ) -> EventPlacement:
-    """Decide a que bucket-minuto pertenece un evento (ver ADR 003 y 005).
+    """Decide which minute-bucket an event belongs to (see ADR 003 and 005).
 
-    - Dentro de la ventana de tardios: cae en su propio minuto, sin marcar.
-    - Mas tarde que la ventana pero dentro de la retencion de buckets: sigue
-      cayendo en su propio minuto, pero se marca como fuera de ventana
-      (visibilidad, no afecta el conteo).
-    - Mas tarde que la retencion (el bucket original ya se habria expirado):
-      se aplica al bucket actual como fallback, para nunca perder el evento.
+    - Within the lateness window: lands in its own minute, unflagged.
+    - Later than the window but within the bucket retention: still lands
+      in its own minute, but flagged as out-of-window (visibility only,
+      does not affect the count).
+    - Later than the retention (the original bucket would have already
+      expired): applied to the current bucket as a fallback, so the
+      event is never lost.
     """
     now_utc: datetime = now.astimezone(timezone.utc)
     occurred_at_utc: datetime = occurred_at.astimezone(timezone.utc)
@@ -56,6 +57,6 @@ def classify_event(
 
 
 def minute_range(end: datetime, minutes: int) -> list[datetime]:
-    """Ultimos `minutes` buckets, en orden cronologico, terminando en `end`."""
+    """Last `minutes` buckets, in chronological order, ending at `end`."""
     end_minute: datetime = truncate_to_minute(end)
     return [end_minute - timedelta(minutes=offset) for offset in range(minutes - 1, -1, -1)]

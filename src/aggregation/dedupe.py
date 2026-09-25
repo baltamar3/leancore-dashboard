@@ -1,4 +1,4 @@
-"""Dedupe atómico por `event_id` + agregación por minuto sobre Redis (ADR 002)."""
+"""Atomic dedupe by `event_id` plus per-minute aggregation on Redis (ADR 002)."""
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -21,7 +21,7 @@ _FIELD_BY_TYPE: dict[PaymentEventType, str] = {
 
 @dataclass(frozen=True)
 class ApplyResult:
-    """Resultado de aplicar un evento: si se contó y a qué bucket, con qué marcas."""
+    """Result of applying an event: whether it counted, which bucket, and its flags."""
 
     applied: bool
     bucket_key: str
@@ -30,10 +30,10 @@ class ApplyResult:
 
 
 class DedupeAggregator:
-    """Aplica dedupe atómico + agregación por minuto (ADR 002, 003, 005)."""
+    """Applies atomic dedupe plus per-minute aggregation (ADR 002, 003, 005)."""
 
     def __init__(self, redis: Redis, settings: Settings) -> None:
-        """Registra el script Lua de dedupe+incremento contra `redis`."""
+        """Register the dedupe+increment Lua script against `redis`."""
         self._redis: Redis = redis
         self._settings: Settings = settings
         self._script: AsyncScript = redis.register_script(
@@ -41,7 +41,7 @@ class DedupeAggregator:
         )
 
     async def apply(self, event: PaymentEvent, now: datetime | None = None) -> ApplyResult:
-        """Deduplica y agrega `event`; es un no-op si su `event_id` ya fue aplicado."""
+        """Deduplicate and aggregate `event`; a no-op if its `event_id` was already applied."""
         now = now or datetime.now(timezone.utc)
         placement = classify_event(
             occurred_at=event.occurred_at,

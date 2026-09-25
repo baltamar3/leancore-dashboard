@@ -1,4 +1,4 @@
-"""Punto de entrada del proceso consumidor (`python -m src.consumer.main`)."""
+"""Entry point for the consumer process (`python -m src.consumer.main`)."""
 
 import asyncio
 import logging
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _register_shutdown_handlers(stop_event: asyncio.Event) -> None:
-    """Conecta SIGTERM/SIGINT a `stop_event.set` para el cierre ordenado."""
+    """Wire SIGTERM/SIGINT to `stop_event.set` for graceful shutdown."""
     loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         try:
@@ -28,7 +28,7 @@ def _register_shutdown_handlers(stop_event: asyncio.Event) -> None:
 
 
 async def main() -> None:
-    """Arranca un consumidor y lo corre hasta recibir una señal de apagado."""
+    """Start a consumer and run it until a shutdown signal is received."""
     logging.basicConfig(level=logging.INFO)
     settings: Settings = get_settings()
     consumer_name: str = os.environ.get("CONSUMER_NAME", f"consumer-{uuid.uuid4().hex[:8]}")

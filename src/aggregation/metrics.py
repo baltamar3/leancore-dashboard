@@ -1,4 +1,4 @@
-"""Lectura de métricas agregadas por minuto desde Redis para la API del tablero."""
+"""Reads per-minute aggregated metrics from Redis for the dashboard API."""
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,7 +10,7 @@ from src.aggregation.buckets import bucket_key, minute_range
 
 @dataclass(frozen=True)
 class MinuteMetrics:
-    """Conteo de `processed`/`failed` para un bucket-minuto dado."""
+    """Count of `processed`/`failed` for a given minute-bucket."""
 
     minute_start: datetime
     processed: int
@@ -20,7 +20,7 @@ class MinuteMetrics:
 async def get_metrics(
     redis: Redis, minutes: int, now: datetime | None = None
 ) -> list[MinuteMetrics]:
-    """Lee los últimos `minutes` buckets (rellenando con cero los vacíos)."""
+    """Read the last `minutes` buckets (zero-filling any that are empty)."""
     now = now or datetime.now(timezone.utc)
     buckets: list[datetime] = minute_range(now, minutes)
 
