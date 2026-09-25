@@ -15,11 +15,11 @@
 
 ## 3. Dedupe y agregación en Redis
 
-- [ ] 3.1 Implementar el script Lua de dedupe+incremento y el wrapper Python que lo registra/ejecuta; test unitario con fakeredis: la primera aplicación de un `event_id` incrementa el bucket correspondiente.
-- [ ] 3.2 Test unitario (fakeredis): aplicar el mismo `event_id` dos veces → el segundo no reincrementa — cubre "Evento reentregado tras timeout de ack" y "Evento duplicado producido por el emisor".
-- [ ] 3.3 Implementar el cálculo de bucket de minuto a partir de `occurred_at` (UTC, truncado a minuto); test unitario de frontera de minuto (ej. `12:00:59.9` vs `12:01:00.1` deben caer en buckets distintos).
-- [ ] 3.4 Implementar la lógica de ventana de tardíos (evento dentro de allowed lateness → bucket histórico; fuera de lateness pero bucket vivo → bucket histórico + marca de fallback; bucket ya expirado → bucket actual + contador de fallback); tests unitarios para los tres casos.
-- [ ] 3.5 Implementar `get_metrics(minutes)` que lee los Hashes de los últimos N minutos y rellena con cero los minutos sin eventos; test unitario que verifica los ceros.
+- [x] 3.1 Implementar el script Lua de dedupe+incremento y el wrapper Python que lo registra/ejecuta; test unitario con fakeredis: la primera aplicación de un `event_id` incrementa el bucket correspondiente.
+- [x] 3.2 Test unitario (fakeredis): aplicar el mismo `event_id` dos veces → el segundo no reincrementa — cubre "Evento reentregado tras timeout de ack" y "Evento duplicado producido por el emisor".
+- [x] 3.3 Implementar el cálculo de bucket de minuto a partir de `occurred_at` (UTC, truncado a minuto); test unitario de frontera de minuto (ej. `12:00:59.9` vs `12:01:00.1` deben caer en buckets distintos).
+- [x] 3.4 Implementar la lógica de ventana de tardíos (evento dentro de allowed lateness → bucket histórico; fuera de lateness pero bucket vivo → bucket histórico + marca de fallback; bucket ya expirado → bucket actual + contador de fallback); tests unitarios para los tres casos.
+- [x] 3.5 Implementar `get_metrics(minutes)` que lee los Hashes de los últimos N minutos y rellena con cero los minutos sin eventos; test unitario que verifica los ceros.
 
 ## 4. Consumidor
 
