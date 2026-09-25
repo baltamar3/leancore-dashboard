@@ -23,13 +23,13 @@
 
 ## 4. Consumidor
 
-- [ ] 4.1 Implementar creación idempotente de stream y grupo (`XGROUP CREATE ... MKSTREAM`) al arrancar; test de integración (Redis real) que verifica que arrancar dos veces no falla.
-- [ ] 4.2 Implementar el loop principal (`XREADGROUP` → aplicar dedupe+agregación → `XACK` solo tras éxito); test de integración: publicar N eventos, correr un consumidor, verificar que el conteo final agregado es igual a N.
-- [ ] 4.3 Implementar recuperación de pendientes con `XAUTOCLAIM` (min-idle-time configurable) al inicio de cada ciclo de lectura; test de integración que simula un consumidor caído a mitad de proceso y verifica que otro consumidor reclama y completa el conteo.
-- [ ] 4.4 Implementar el flujo de dead-letter: eventos inválidos y mensajes "poison" (delivery count vía `XPENDING` supera el máximo configurado) se copian a `stream:payments:dlq` y se confirman en el stream principal; test de integración que verifica que un evento malformado no afecta los contadores y sí aparece en la `dlq`.
-- [ ] 4.5 Implementar cierre ordenado ante SIGTERM/SIGINT (terminar entradas en curso, dejar de leer nuevas, cerrar conexión); test que verifica que no quedan entradas "en vuelo" sin confirmar tras la señal.
-- [ ] 4.6 Implementar reconexión con backoff acotado si Redis no responde; test que simula una desconexión y verifica que el proceso no termina y retoma el consumo al reconectar.
-- [ ] 4.7 Prueba de concurrencia central del ejercicio: correr 2-3 consumidores en paralelo sobre el mismo grupo contra un lote de eventos que incluye duplicados intencionales, y verificar que el conteo final es exacto (sin duplicar ni perder ninguno).
+- [x] 4.1 Implementar creación idempotente de stream y grupo (`XGROUP CREATE ... MKSTREAM`) al arrancar; test de integración (Redis real) que verifica que arrancar dos veces no falla.
+- [x] 4.2 Implementar el loop principal (`XREADGROUP` → aplicar dedupe+agregación → `XACK` solo tras éxito); test de integración: publicar N eventos, correr un consumidor, verificar que el conteo final agregado es igual a N.
+- [x] 4.3 Implementar recuperación de pendientes (`XPENDING` + `XCLAIM`, min-idle-time configurable) al inicio de cada ciclo de lectura; test de integración que simula un consumidor caído a mitad de proceso y verifica que otro consumidor reclama y completa el conteo.
+- [x] 4.4 Implementar el flujo de dead-letter: eventos inválidos y mensajes "poison" (delivery count vía `XPENDING` supera el máximo configurado) se copian a `stream:payments:dlq` y se confirman en el stream principal; test de integración que verifica que un evento malformado no afecta los contadores y sí aparece en la `dlq`.
+- [x] 4.5 Implementar cierre ordenado ante SIGTERM/SIGINT (terminar entradas en curso, dejar de leer nuevas, cerrar conexión); test que verifica que no quedan entradas "en vuelo" sin confirmar tras la señal.
+- [x] 4.6 Implementar reconexión con backoff acotado si Redis no responde; test que simula una desconexión y verifica que el proceso no termina y retoma el consumo al reconectar.
+- [x] 4.7 Prueba de concurrencia central del ejercicio: correr 2-3 consumidores en paralelo sobre el mismo grupo contra un lote de eventos que incluye duplicados intencionales, y verificar que el conteo final es exacto (sin duplicar ni perder ninguno).
 
 ## 5. API y tablero
 
