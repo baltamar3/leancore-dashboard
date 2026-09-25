@@ -50,34 +50,18 @@ def build_malformed_fields() -> dict[str, str]:
 
 
 def build_batch(args: argparse.Namespace, now: datetime) -> list[tuple[dict[str, str], bool]]:
-    """Return (fields, is_malformed) pairs.
-
-    `--malformed-rate` is still a per-event probability (how many end up
-    malformed varies run to run), but `--failed-rate` is an exact share of
-    `--count`: exactly `round(count * failed_rate)` of the valid events are
-    `payment.failed` (capped at however many valid events there are), chosen
-    at random among them so they aren't just the first N.
-    """
-    malformed_flags: list[bool] = [
-        random.random() < args.malformed_rate for _ in range(args.count)
-    ]
-    valid_indices: list[int] = [
-        i for i, is_malformed in enumerate(malformed_flags) if not is_malformed
-    ]
-
-    target_failed: int = min(round(args.count * args.failed_rate), len(valid_indices))
-    failed_indices: set[int] = set(random.sample(valid_indices, target_failed))
-
+    """Return (fields, is_malformed) pairs."""
     batch: list[tuple[dict[str, str], bool]] = []
-    for i in range(args.count):
+    for _ in range(args.count):
         occurred_at: datetime = now
         if args.spread_seconds:
             occurred_at = now - timedelta(seconds=random.uniform(0, args.spread_seconds))
 
-        if malformed_flags[i]:
+        if random.random() < args.malformed_rate:
             batch.append((build_malformed_fields(), True))
         else:
-            event_type: str = "payment.failed" if i in failed_indices else "payment.processed"
+            is_failed: bool = random.random() < args.failed_rate
+            event_type: str = "payment.failed" if is_failed else "payment.processed"
             batch.append((build_valid_fields(event_type, occurred_at), False))
 
     if args.out_of_order:
@@ -98,12 +82,7 @@ def main() -> None:
     parser.add_argument(
         "--malformed-rate", type=float, default=0.0, help="Prob. (0-1) de evento inválido"
     )
-    parser.add_argument(
-        "--failed-rate",
-        type=float,
-        default=0.2,
-        help="Porcentaje exacto de payment.failed sobre --count (no es azar por evento)",
-    )
+    parser.add_argument("--failed-rate", type=float, default=0.2, help="Proporción payment.failed")
     parser.add_argument(
         "--out-of-order", action="store_true", help="Publica en orden distinto al de occurred_at"
     )
