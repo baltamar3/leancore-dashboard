@@ -46,7 +46,8 @@ def build_malformed_fields() -> dict:
     return random.choice(variants)
 
 
-def build_batch(args, now: datetime) -> list[dict]:
+def build_batch(args, now: datetime) -> list[tuple[dict, bool]]:
+    """Devuelve pares (fields, is_malformed)."""
     batch = []
     for _ in range(args.count):
         occurred_at = now
@@ -54,13 +55,11 @@ def build_batch(args, now: datetime) -> list[dict]:
             occurred_at = now - timedelta(seconds=random.uniform(0, args.spread_seconds))
 
         if random.random() < args.malformed_rate:
-            fields = build_malformed_fields()
+            batch.append((build_malformed_fields(), True))
         else:
             is_failed = random.random() < args.failed_rate
             event_type = "payment.failed" if is_failed else "payment.processed"
-            fields = build_valid_fields(event_type, occurred_at)
-
-        batch.append(fields)
+            batch.append((build_valid_fields(event_type, occurred_at), False))
 
     if args.out_of_order:
         random.shuffle(batch)
@@ -97,16 +96,26 @@ def main() -> None:
     batch = build_batch(args, now)
 
     published = 0
-    for fields in batch:
+    duplicated = 0
+    malformed_unique = sum(1 for _, is_malformed in batch if is_malformed)
+    valid_unique = len(batch) - malformed_unique
+
+    for fields, _ in batch:
         redis.xadd(settings.stream_name, fields)
         published += 1
         if random.random() < args.duplicate_rate:
             redis.xadd(settings.stream_name, fields)  # mismo event_id: duplicado intencional
             published += 1
+            duplicated += 1
         if args.delay_ms:
             time.sleep(args.delay_ms / 1000)
 
-    print(f"Publicadas {published} entradas en '{settings.stream_name}' (incluye duplicados).")
+    print(
+        f"Publicadas {published} entradas en '{settings.stream_name}' "
+        f"({len(batch)} base + {duplicated} duplicados).\n"
+        f"Esperado en el tablero: {valid_unique} eventos válidos únicos "
+        f"({malformed_unique} inválidos -> deberían caer en '{settings.dlq_stream_name}')."
+    )
 
 
 if __name__ == "__main__":

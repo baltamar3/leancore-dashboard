@@ -45,9 +45,9 @@
 
 ## 7. Orquestación completa y demo end-to-end
 
-- [ ] 7.1 Completar `docker-compose.yml` con los servicios `api` y `consumer` (soportando `--scale consumer=N`); verificar que `docker compose up --build` levanta los tres servicios sin errores.
-- [ ] 7.2 Crear un comando de demo (`make demo` o `scripts/demo.sh`) que levanta el stack, corre el producer con duplicados/desorden/malformados, y consulta el endpoint; verificar que el conteo final coincide con el número de eventos únicos válidos publicados.
-- [ ] 7.3 Verificar que `make test` (unit + integration) pasa en limpio contra `docker compose up -d redis`.
+- [x] 7.1 Completar `docker-compose.yml` con los servicios `api` y `consumer` (soportando `--scale consumer=N`); verificar que `docker compose up --build` levanta los tres servicios sin errores.
+- [x] 7.2 Crear un comando de demo (`make demo` o `scripts/demo.sh`) que levanta el stack, corre el producer con duplicados/desorden/malformados, y consulta el endpoint; verificar que el conteo final coincide con el número de eventos únicos válidos publicados.
+- [x] 7.3 Verificar que `make test` (unit + integration) pasa en limpio contra `docker compose up -d redis`.
 
 ## 8. Documentación mínima para ejecutar
 
