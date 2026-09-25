@@ -10,8 +10,8 @@
 
 ## 2. Modelos y validación de eventos
 
-- [ ] 2.1 Definir el modelo Pydantic `PaymentEvent` (`event_id`, `type` enum `payment.processed`/`payment.failed`, `occurred_at` datetime UTC, `payment_id`); test unitario que verifica que un evento válido se parsea correctamente.
-- [ ] 2.2 Test unitario: evento malformado (campo faltante o tipo incorrecto) y evento con `type` desconocido fallan la validación — cubre los escenarios "Evento malformado" y "Tipo de evento desconocido" de `specs/payment-event-ingestion`.
+- [x] 2.1 Definir el modelo Pydantic `PaymentEvent` (`event_id`, `type` enum `payment.processed`/`payment.failed`, `occurred_at` datetime UTC, `payment_id`); test unitario que verifica que un evento válido se parsea correctamente.
+- [x] 2.2 Test unitario: evento malformado (campo faltante o tipo incorrecto) y evento con `type` desconocido fallan la validación — cubre los escenarios "Evento malformado" y "Tipo de evento desconocido" de `specs/payment-event-ingestion`.
 
 ## 3. Dedupe y agregación en Redis
 
