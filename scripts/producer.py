@@ -15,10 +15,11 @@ from datetime import datetime, timedelta, timezone
 
 from redis import Redis
 
-from src.config.settings import get_settings
+from src.config.settings import Settings, get_settings
 
 
-def build_valid_fields(event_type: str, occurred_at: datetime) -> dict:
+def build_valid_fields(event_type: str, occurred_at: datetime) -> dict[str, str]:
+    """Construye los campos de un evento de pago válido para publicar en el stream."""
     return {
         "event_id": str(uuid.uuid4()),
         "type": event_type,
@@ -27,8 +28,10 @@ def build_valid_fields(event_type: str, occurred_at: datetime) -> dict:
     }
 
 
-def build_malformed_fields() -> dict:
-    variants = [
+def build_malformed_fields() -> dict[str, str]:
+    """Elige al azar una de las variantes de evento inválido (falta campo,
+    tipo desconocido, fecha con formato inválido)."""
+    variants: list[dict[str, str]] = [
         {"event_id": str(uuid.uuid4()), "type": "payment.processed"},
         {
             "event_id": str(uuid.uuid4()),
@@ -46,19 +49,19 @@ def build_malformed_fields() -> dict:
     return random.choice(variants)
 
 
-def build_batch(args, now: datetime) -> list[tuple[dict, bool]]:
+def build_batch(args: argparse.Namespace, now: datetime) -> list[tuple[dict[str, str], bool]]:
     """Devuelve pares (fields, is_malformed)."""
-    batch = []
+    batch: list[tuple[dict[str, str], bool]] = []
     for _ in range(args.count):
-        occurred_at = now
+        occurred_at: datetime = now
         if args.spread_seconds:
             occurred_at = now - timedelta(seconds=random.uniform(0, args.spread_seconds))
 
         if random.random() < args.malformed_rate:
             batch.append((build_malformed_fields(), True))
         else:
-            is_failed = random.random() < args.failed_rate
-            event_type = "payment.failed" if is_failed else "payment.processed"
+            is_failed: bool = random.random() < args.failed_rate
+            event_type: str = "payment.failed" if is_failed else "payment.processed"
             batch.append((build_valid_fields(event_type, occurred_at), False))
 
     if args.out_of_order:
@@ -68,7 +71,10 @@ def build_batch(args, now: datetime) -> list[tuple[dict, bool]]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generador de eventos de pago para pruebas")
+    """CLI: publica un lote de eventos de pago según los flags recibidos."""
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+        description="Generador de eventos de pago para pruebas"
+    )
     parser.add_argument("--count", type=int, default=100, help="Cantidad de eventos base")
     parser.add_argument(
         "--duplicate-rate", type=float, default=0.0, help="Prob. (0-1) de republicar un evento"
@@ -87,18 +93,18 @@ def main() -> None:
         help="Distribuye occurred_at en los últimos N segundos (simula tardíos)",
     )
     parser.add_argument("--delay-ms", type=int, default=0, help="Pausa entre publicaciones (ms)")
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
-    settings = get_settings()
-    redis = Redis.from_url(settings.redis_url)
+    settings: Settings = get_settings()
+    redis: Redis = Redis.from_url(settings.redis_url)
 
-    now = datetime.now(timezone.utc)
-    batch = build_batch(args, now)
+    now: datetime = datetime.now(timezone.utc)
+    batch: list[tuple[dict[str, str], bool]] = build_batch(args, now)
 
-    published = 0
-    duplicated = 0
-    malformed_unique = sum(1 for _, is_malformed in batch if is_malformed)
-    valid_unique = len(batch) - malformed_unique
+    published: int = 0
+    duplicated: int = 0
+    malformed_unique: int = sum(1 for _, is_malformed in batch if is_malformed)
+    valid_unique: int = len(batch) - malformed_unique
 
     for fields, _ in batch:
         redis.xadd(settings.stream_name, fields)
