@@ -5,7 +5,7 @@ _TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pagos por minuto</title>
+  <title>LeanCore Pagos</title>
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet"
@@ -18,7 +18,7 @@ _TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
   <div class="container">
-    <h1 class="mb-4">Pagos procesados / fallidos por minuto (UTC)</h1>
+    <h1 class="mb-4">LeanCore Pagos / Dashboard (UTC)</h1>
 
     <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
       <div class="btn-group" role="group" aria-label="Ventana de tiempo" id="minutes-presets">
